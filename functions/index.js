@@ -20,25 +20,33 @@ exports.onCreateNlp = functions.runWith({secrets: [openAiApiKey], timeoutSeconds
   const openai = new OpenAIApi(configuration);
   console.log("nlp.type: ", nlp.type);
   if (nlp.type && nlp.type === "feedback") {
-    console.log("nlp.feedbacks: ", nlp.feedbacks);
-    const openaiSystem = "You are customer relationship manager's assistant, analysing customer feedbacks for feedback's sentiment and topic.";
-    let openaiRequest = "Topics of feedbacks can be: 'LivBetter' for carbon footprint,'Nav Planner' for fianncial planning,'Login','App Slowness','Insights','App Navigation','App Features','Account Management','Credit Card Services','Customer Service','Fraud and Security','Loan Services','Products and Services','Rates and Fees','Transaction Issues','Corporate Banking' or 'General'.\nFor the following 2 items:\nitem 1: Nav Planner and Insights are very helpful.\nitem 2: Fingerprint login in failing.\nJSON response is:\n[{\"item\":1,\"analysis\":[{\"topic\":\"Nav Planner\",\"sentiment\":0.9},{\"topic\":\"Insights\",\"sentiment\":0.9}]},{\"item\":2,\"analysis\":[{\"topic\":\"Login\",\"sentiment\":-0.6}]}]\n\nCreate a JSON response for the following items:";
+    // console.log("nlp.feedbacks: ", nlp.feedbacks);
+    const openaiSystem = "You are customer relationship manager's assistant. You analyse customer feedbacks for the topics and corresponding sentiments. You provide your analysis in JSON.";
+    const openaiUser1 = "Topics:\nApp Slowness\nLogin\nInsights\nFianncial Planning or Nav Planner\nCarbon Footprint or LivBetter\nGeneral\n\n\nFeedback items:\nitem 1: Nav Planner is helpful. Insights is very helpful and actionable\nitem 2: Fingerprint login is failing";
+    const openaiAssistant1 = "[{\"item\":1,\"analysis\":[{\"topic\":\"Fianncial Planning or Nav Planner\",\"sentiment\":0.7},{\"topic\":\"Insights\",\"sentiment\":0.9}]},{\"item\":2,\"analysis\":[{\"topic\":\"Login\",\"sentiment\":-0.7}]}]";
+    let openaiUser2 = "Topics:";
+    nlp.categories.forEach((category) => {
+      openaiUser2 += "\n" + category;
+    });
+    openaiUser2 += "\nGeneral\n\n\nFeedback items:";
     nlp.feedbacks.forEach((feedback, index) => {
-      openaiRequest += "\nitem " + (index + 1) + ": " + feedback;
+      openaiUser2 += "\nitem " + (index + 1) + ": " + feedback;
     });
 
     // query nlp collection, for existing feedback requests, if the request is same as the current request, return the response
-    return admin.firestore().collection("nlps").where("request", "==", openaiRequest).where("successful", "==", true).get().then((matchSnap) => {
+    return admin.firestore().collection("nlps").where("request", "==", openaiUser2).where("successful", "==", true).get().then((matchSnap) => {
       if (matchSnap.empty) {
         console.log("Request not in cache, calling OpenAI ChatCompletion API");
         return openai.createChatCompletion({
           model: "gpt-3.5-turbo",
           messages: [
             {role: "system", content: openaiSystem},
-            {role: "user", content: openaiRequest}],
+            {role: "user", content: openaiUser1},
+            {role: "assistant", content: openaiAssistant1},
+            {role: "user", content: openaiUser2}],
         }).then((response) => {
           return registerFeedbacks(
-              openaiRequest,
+              openaiUser2,
               openaiSystem,
               response.data.choices[0].message.content,
               nlp,
@@ -51,7 +59,7 @@ exports.onCreateNlp = functions.runWith({secrets: [openAiApiKey], timeoutSeconds
       } else {
         console.log("Request found in cache!");
         return registerFeedbacks(
-            openaiRequest,
+            openaiUser2,
             openaiSystem,
             matchSnap.docs[0].data().response,
             nlp,
@@ -62,9 +70,9 @@ exports.onCreateNlp = functions.runWith({secrets: [openAiApiKey], timeoutSeconds
     });
   } else if (nlp.type && nlp.type === "content") {
     const openaiSystem = "You are a professional copywriter, rewriting different contents for different customer demographics";
-    const openaiUser1 = "Content: Freedom card is pre-approved. click {{link}} to apply.\nDemographics:\nmale. employed. age:25 to 35\nfemale. unemployed. age:18 to 25";
-    const openaiAssistant1 = "[{\"gender\":\"male\",\"employment_status\":\"employed\",\"minimum_age\":25,\"maximum_age\":35,\"subject\":\"Pre-Approved Freedom Card\",\"body\":\"Dear {{first_name}},\n\nWe are pleased to inform you that you have been pre-approved for our new 'Freedom' card. Please click {{link}} to apply for your card.\"},{\"gender\":\"female\",\"employment_status\":\"unemployed\",\"minimum_age\":18,\"maximum_age\":25,\"subject\":\"Freedom Card for You!\",\"body\":\"Hi {{first_name}}, \n\nOur 'Freedom' card has been pre-approved, for you to enjoy your financial freedom! Click{{link}} to apply\"}]";
-    let openaiUser2 = "Content: " + nlp.content + "\nDemographics:";
+    const openaiUser1 = "Type: Short email. \nContent: Freedom card pre-approved. no annual fee. 2X reward on travel. click {{link}} to apply.\nDemographics:\nmale. employed. age:25 to 35\nfemale. unemployed. age:18 to 25";
+    const openaiAssistant1 = "[{\"gender\":\"male\",\"employment_status\":\"employed\",\"minimum_age\":25,\"maximum_age\":35,\"subject\":\"Pre-Approved Freedom Card with 2X Travel Rewards\",\"body\":\"Dear {{first_name}}, \n\nWe are pleased to inform you that you have been pre-approved for our new 'Freedom' card. Get 2X points on travel, and 1X points on all other purchases. Enjoy all these amazing perks without an annual fee. \n\nExperience the freedom of this Credit Card and unlock a world of rewards. Please click {{link}} to apply for your card. \n\nWarm regards,\"},{\"gender\":\"female\",\"employment_status\":\"unemployed\",\"minimum_age\":18,\"maximum_age\":25,\"subject\":\"Freedom Card with no annual fee and more rewards for You!\",\"body\":\"Hi {{first_name}}, \n\nOur 'Freedom' card has been pre-approved, for you to enjoy your financial freedom! \n\nGet rewards on all your purchases, with 2X points on your travel expenses. Enjoy all these amazing perks without an annual fee. \n\nDon't miss out on this fantastic opportunity to enhance your financial journey with a. click on {{link}} to apply! \n\nBest regards\"}]";
+    let openaiUser2 = "Type: Long email. \nContent: " + nlp.content + "\nDemographics:";
     if (nlp.age18to25) {
       openaiUser2 += "\nmale. unemployed. age:18 to 25\nfemale. unemployed. age:18 to 25";
     }
@@ -131,11 +139,23 @@ exports.onCreateExtract = functions.runWith({secrets: [openAiApiKey], timeoutSec
       return axios(extract.url).then((response) => {
         const html = response.data;
         const $ = cheerio.load(html);
-        let text = $("div#mw-content-text p").text();
-
+        let text;
         // if wikipedia url, remove wiki comments
         if (extract.url.includes("wikipedia")) {
+          text = $("div#mw-content-text").contents().map(function() {
+            return (this.type === "text") ? $(this).text()+" " : "";
+          }).get().join("");
           text = removeWikiComments(text);
+        } else if (extract.url.includes("www.dbs")) {
+          text = $("div#bodywrapper p").contents().map(function() {
+            return (this.type === "text") ? $(this).text()+" " : "";
+          }).get().join("");
+        } else {
+          // extract all text and URLs from the HTML
+          text = $("body").contents().map(function() {
+            return (this.type === "text") ? $(this).text()+" " : "";
+          }).get().join("");
+          // text = $("body p").text();
         }
         const words = wordsCount(text);
         console.log("Extracted " + words + " words from " + extract.url);
@@ -148,7 +168,7 @@ exports.onCreateExtract = functions.runWith({secrets: [openAiApiKey], timeoutSec
         });
 
         // call the OpenAI API to extract the facts from the text
-        if (text) {
+        if (text && words > 0) {
           const configuration = new Configuration({
             apiKey: openAiApiKey.value(),
           });
@@ -171,14 +191,14 @@ exports.onCreateExtract = functions.runWith({secrets: [openAiApiKey], timeoutSec
                 const jsonStart = responseText.indexOf("{");
                 const jsonEnd = responseText.lastIndexOf("}") + 1;
                 const jsonString = responseText.substring(jsonStart, jsonEnd);
-                console.log("Response jsonString: ", jsonString);
+                console.log("Extract summary response jsonString: ", jsonString);
                 return JSON.parse(jsonString);
               } catch (error) {
                 console.error(error);
                 const jsonStart = responseText.indexOf("\"summary\"");
                 const jsonEnd = responseText.lastIndexOf("\"]") + 2;
                 const jsonString = "{" + responseText.substring(jsonStart, jsonEnd) + "}";
-                console.log("Fixed response jsonString: ", jsonString);
+                console.log("Fixed extract summary response jsonString: ", jsonString);
                 return JSON.parse(jsonString);
               }
             })();
@@ -188,10 +208,19 @@ exports.onCreateExtract = functions.runWith({secrets: [openAiApiKey], timeoutSec
             return extractSnap.ref.update(extract);
           }).catch(console.error);
         } else {
-          console.log("No text to extract from");
-          return;
+          console.log("No text to extract summary from");
+          return Promise.resolve();
         }
-      }).catch(console.error);
+      }).catch((error) => {
+        console.error("Error scraping URL: ", error);
+        // update the document with 0 words
+        extractSnap.ref.update({
+          updated: admin.firestore.FieldValue.serverTimestamp(),
+          words: 0,
+          cached: false,
+        });
+        return Promise.resolve();
+      });
     } else {
       const match = matchSnap.docs[0].data();
       console.log("URL already exists, using cached data");
@@ -237,7 +266,7 @@ exports.onUpdateChat = functions.runWith({secrets: [openAiApiKey]}).firestore.do
     }).then((response) => {
       const responseText = response.data.choices[0].message.content.trim();
       return change.after.ref.update({
-        conversation: admin.firestore.FieldValue.arrayUnion("Bot: " + responseText),
+        conversation: admin.firestore.FieldValue.arrayUnion("Bot: " + responseText + "\n"),
         updated: admin.firestore.FieldValue.serverTimestamp(),
         processed: true,
       });
@@ -277,14 +306,14 @@ function registerFeedbacks(openaiRequest, openaiSystem, rawResponseText, nlp, nl
       const jsonStart = responseText.indexOf("[{");
       const jsonEnd = responseText.lastIndexOf("}]}]") + 4;
       const jsonString = responseText.substring(jsonStart, jsonEnd);
-      console.log("Response jsonString: ", jsonString);
+      console.log("Feedback response jsonString: ", jsonString);
       return JSON.parse(jsonString);
     } catch (error) {
       console.error(error);
       const jsonStart = responseText.indexOf("\"item\"");
       const jsonEnd = responseText.lastIndexOf("}]}") + 3;
       const jsonString = "[{" + responseText.substring(jsonStart, jsonEnd) + "]";
-      console.log("Fixed response jsonString: ", jsonString);
+      console.log("Fixed feedback response jsonString: ", jsonString);
       return JSON.parse(jsonString);
     }
   })();
@@ -355,6 +384,109 @@ function registerContents(openaiRequest, openaiSystem, rawResponseText, nlp, nlp
     nlpRef.collection("contents").add(content);
   });
 }
+
+// onCreate function for the "epics" collection
+exports.onCreateEpic = functions.runWith({secrets: [openAiApiKey], timeoutSeconds: 120}).firestore.document("epics/{epicId}").onCreate((epicSnap, context) => {
+  const epic = epicSnap.data();
+  console.log("epic: ", epic);
+  // check if the requirement is already exists in epics collection
+  return admin.firestore().collection("epics").where("requirement", "==", epic.requirement).where("response", "!=", "").get().then((matchSnap) => {
+    if (matchSnap.empty) {
+      console.log("No matching requirement in cache");
+      const words = wordsCount(epic.requirement);
+      // call the OpenAI ChatCompletion API
+      if (epic.requirement && words > 0) {
+        const configuration = new Configuration({
+          apiKey: openAiApiKey.value(),
+        });
+        const openai = new OpenAIApi(configuration);
+        const openaiSystem = "You are a software product manager, writing detailed technical user stories for product requirements.";
+        const openaiUser1 = "Write user stories for following requirement:\nA self-service marketing rule-engine that enables business users to create marketing rules based on customer data, such as product propensities, demographics, behavior, recent usage of services and transaction history, in order to deliver targeted messages via owned inbound and outbound channels. The platform must comply with regulatory requirements and prevent spamming customers. Integration of AI models should be supported to predict product-propensity, allowing for monthly iterative upgrades and prioritizing the most relevant products for customers based on revenue expectations. AI models should predict the best way to contact a customer, determining the optimal channels, timing, and content. Measure campaign effectiveness using control groups. Integrate the rule engine with the customer-360 data-lake and marketing automation platform.";
+        const openaiAssistant1 = "As a marketing business user, I want to be able to create marketing rules based on customers' product propensities, demographics, behavior, recent usage of services and transaction history and deliver messages to customers via available channels. Supported channels should include owned inbound (mobile app, website, customer-support, product-documents) and outbound (email, SMS, push notifications, telemarketing).\nAs a marketing business user, I must be able to enforce the regulatory requirements in each target market to communicate with customers legally and ethically while avoiding any penalties or negative brand perception. System should have configurable frequency caps across channels to avoid spamming customers.\nAs a machine learning engineer, I want to be able to integrate AI models predicting product-propensity with iterative monthly upgrades, to prioritize the most relevant products for each customer. System should have an algorithm to take 'customer product propensity' and 'product revenue expectation' to maximize the revenue.\nAs a machine learning engineer, I want to be able to integrate AI models predicting the best way to contact a customer, to determine the channels, time and content. AI model prediction for channels, time and content should be taken from the data-lake on a daily basis and updated in the rule engine.\nAs a marketing analyst, I want to be able to measure the effectiveness of marketing campaigns using control groups and see how they impact customer behavior and revenue, so that I can optimize marketing rules and campaigns for better results.\nAs a data engineer, I want to be able to integrate the rule engine to read any data from customer-360 data-lake and marketing automation platform, so that marketing teams can use the rule engine to generate and send targeted messages to customers.";
+        const openaiUser2 = "Write user stories for following requirement:\nAn interface for relationship managers to get personalized conversation suggestions based on customer profiles, recent interactions, and usage of products and services. Marketing users should be able to define customer segment-based templates for product offers. The system must comply with regulatory requirements, including configurable frequency caps for conversations. AI models predicting product-propensity should be integrated, with iterative monthly upgrades prioritizing the most relevant products for customers based on revenue expectations. Relationship managers must have the ability to provide feedback on system suggestions, allowing for model improvements. Data engineers should be able to integrate the system with any customer-360 data in the data lake seamlessly.";
+        const openaiAssistant2 = "As a relationship manager, I want to have an interface that provides personalized suggestions for the next best conversation with my customers, so that I can have meaningful conversations that add value to their banking experience. The suggestions should be based on the customer's profile, recent interactions with the bank, interactions with me as their relationship manager and interactions with the bank's services.\nAs a marketing business user, I want to be able to define customer segment based templates templates for each product offer.\nAs a compliance officer, I want the system to comply with regulatory requirements for the respective demographic and risk profiles in each target market to communicate with customers legally and ethically, while avoiding any penalties or negative brand perception. The system should have configurable frequency caps on the number of conversations and messages sent to customers to avoid spamming customers.\nAs a machine learning engineer, I want to be able to integrate AI models predicting product-propensity with iterative monthly upgrades, to prioritize the most relevant products for each customer. The system should have an algorithm that takes 'customer product propensity' and 'product revenue expectation' to maximize the revenue.\nAs a relationship manager, I want to be able to provide feedback on the suggestions provided by the system. The system should use this feedback to improve the models and provide better suggestions in the future, based on the relationship manager's preferences.\nAs a data engineer, I want to be able to integrate the system with any customer-360 data in the data lake.";
+        const openaiUser3 = "Write detailed technical user stories for following requirement:\n" + epic.requirement;
+        return openai.createChatCompletion({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {role: "system", content: openaiSystem},
+            {role: "user", content: openaiUser1},
+            {role: "assistant", content: openaiAssistant1},
+            {role: "user", content: openaiUser2},
+            {role: "assistant", content: openaiAssistant2},
+            {role: "user", content: openaiUser3}],
+        }).then((response) => {
+          const responseText = response.data.choices[0].message.content.trim();
+          console.log("Response text: ", responseText);
+          // split response by newline and into stories
+          const stories = responseText.split("\n").map((story) => {
+            return story.trim();
+          }).filter((story) => {
+            return story.length > 0;// && !story.contains("tories");
+          });
+          // update the epic document with the response
+          epicSnap.ref.update({
+            response: responseText,
+            stories: stories,
+            testScenarios: "",
+            processScenarios: false,
+            cahed: false,
+          });
+          return Promise.resolve();
+        });
+      } else {
+        console.log("No requirement to process in the epic document");
+      }
+    } else {
+      console.log("requirement already exists, using cached data");
+      const match = matchSnap.docs[0].data();
+      console.log("match.response: " + match.response);
+      return epicSnap.ref.update({
+        response: match.response,
+        stories: match.stories,
+        testScenarios: match.testScenarios,
+        processScenarios: false,
+        cached: true,
+      });
+    }
+  }).catch(console.error);
+});
+
+// onUpdate function for the "epics" collection to generate test scenarios
+exports.onUpdateEpic = functions.runWith({secrets: [openAiApiKey]}).firestore.document("epics/{epicId}").onUpdate((change, context) => {
+  const epic = change.after.data();
+  if (epic.stories && epic.stories.length > 0 && epic.processScenarios) {
+    console.log("Creating test scenarios for epic");
+    const openaiSystem = "You are a software product QA team member, writing test scenarios for a given epic and user stories.";
+    const openaiUser1 = "Write test scenarios\n\nRequirement:\n" + epic.requirement + "\n\nUser Stories:\n" + epic.stories.join("\n");
+    // call the OpenAI ChatCompletion API
+    const configuration = new Configuration({
+      apiKey: openAiApiKey.value(),
+    });
+    const openai = new OpenAIApi(configuration);
+    return openai.createChatCompletion({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {role: "system", content: openaiSystem},
+        {role: "user", content: openaiUser1}],
+    }).then((response) => {
+      const responseText = response.data.choices[0].message.content.trim();
+      console.log("Response text: ", responseText);
+      // update the epic document with the response
+      return change.after.ref.update({
+        testScenarios: responseText,
+        processScenarios: false,
+      });
+    }).catch((error) => {
+      console.error(error);
+      return change.after.ref.update({
+        processScenarios: false,
+      });
+    });
+  } else {
+    return Promise.resolve();
+  }
+});
 
 /**
  * Remove extra spaces and new lines around the brackets of the JSON String
