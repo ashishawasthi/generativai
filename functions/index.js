@@ -400,37 +400,39 @@ exports.onCreateEpic = functions.runWith({secrets: [openAiApiKey], timeoutSecond
           apiKey: openAiApiKey.value(),
         });
         const openai = new OpenAIApi(configuration);
-        const openaiSystem = "You are a software product manager, writing detailed technical user stories for product requirements.";
-        const openaiUser1 = "Write user stories for following requirement:\nA self-service marketing rule-engine that enables business users to create marketing rules based on customer data, such as product propensities, demographics, behavior, recent usage of services and transaction history, in order to deliver targeted messages via owned inbound and outbound channels. The platform must comply with regulatory requirements and prevent spamming customers. Integration of AI models should be supported to predict product-propensity, allowing for monthly iterative upgrades and prioritizing the most relevant products for customers based on revenue expectations. AI models should predict the best way to contact a customer, determining the optimal channels, timing, and content. Measure campaign effectiveness using control groups. Integrate the rule engine with the customer-360 data-lake and marketing automation platform.";
-        const openaiAssistant1 = "As a marketing business user, I want to be able to create marketing rules based on customers' product propensities, demographics, behavior, recent usage of services and transaction history and deliver messages to customers via available channels. Supported channels should include owned inbound (mobile app, website, customer-support, product-documents) and outbound (email, SMS, push notifications, telemarketing).\nAs a marketing business user, I must be able to enforce the regulatory requirements in each target market to communicate with customers legally and ethically while avoiding any penalties or negative brand perception. System should have configurable frequency caps across channels to avoid spamming customers.\nAs a machine learning engineer, I want to be able to integrate AI models predicting product-propensity with iterative monthly upgrades, to prioritize the most relevant products for each customer. System should have an algorithm to take 'customer product propensity' and 'product revenue expectation' to maximize the revenue.\nAs a machine learning engineer, I want to be able to integrate AI models predicting the best way to contact a customer, to determine the channels, time and content. AI model prediction for channels, time and content should be taken from the data-lake on a daily basis and updated in the rule engine.\nAs a marketing analyst, I want to be able to measure the effectiveness of marketing campaigns using control groups and see how they impact customer behavior and revenue, so that I can optimize marketing rules and campaigns for better results.\nAs a data engineer, I want to be able to integrate the rule engine to read any data from customer-360 data-lake and marketing automation platform, so that marketing teams can use the rule engine to generate and send targeted messages to customers.";
-        const openaiUser2 = "Write user stories for following requirement:\nAn interface for relationship managers to get personalized conversation suggestions based on customer profiles, recent interactions, and usage of products and services. Marketing users should be able to define customer segment-based templates for product offers. The system must comply with regulatory requirements, including configurable frequency caps for conversations. AI models predicting product-propensity should be integrated, with iterative monthly upgrades prioritizing the most relevant products for customers based on revenue expectations. Relationship managers must have the ability to provide feedback on system suggestions, allowing for model improvements. Data engineers should be able to integrate the system with any customer-360 data in the data lake seamlessly.";
-        const openaiAssistant2 = "As a relationship manager, I want to have an interface that provides personalized suggestions for the next best conversation with my customers, so that I can have meaningful conversations that add value to their banking experience. The suggestions should be based on the customer's profile, recent interactions with the bank, interactions with me as their relationship manager and interactions with the bank's services.\nAs a marketing business user, I want to be able to define customer segment based templates templates for each product offer.\nAs a compliance officer, I want the system to comply with regulatory requirements for the respective demographic and risk profiles in each target market to communicate with customers legally and ethically, while avoiding any penalties or negative brand perception. The system should have configurable frequency caps on the number of conversations and messages sent to customers to avoid spamming customers.\nAs a machine learning engineer, I want to be able to integrate AI models predicting product-propensity with iterative monthly upgrades, to prioritize the most relevant products for each customer. The system should have an algorithm that takes 'customer product propensity' and 'product revenue expectation' to maximize the revenue.\nAs a relationship manager, I want to be able to provide feedback on the suggestions provided by the system. The system should use this feedback to improve the models and provide better suggestions in the future, based on the relationship manager's preferences.\nAs a data engineer, I want to be able to integrate the system with any customer-360 data in the data lake.";
-        const openaiUser3 = "Write detailed technical user stories for following requirement:\n" + epic.requirement;
+        const openaiSystem = "You are a technical product manager and solution architect. You write detailed technical user stories for given product requirements.\n\nThe Platform used for the product is AWS cloud. Following are the AWS services that can be used in the product:\n- Arbitration-Layer (proprietary channel routing engine for push to outbound channels, REST APIs for inbound channels)\n- T3 (proprietary data-lake, similar to AWS Athena)\n- T3-Feature-Mart (proprietary customer  model input data and metadata management)\n- Job-Server (proprietary platform for data processing and model inference, similar to AWS EMR)\n- Analytical-Cluster (proprietary data science work-bench, similar to AWS SageMaker)\n- Digi (proprietary mobile app and web app for customers)\n- API-Gateway\n- Data-Loader (for loading data from T3 to MariaDB)\n- CyberArk (for managing secrets)\n- Confluence Kafka (as real time event source)\n- MariaDB (as application database)\n- ReactJS (for UI)\n- AWS S3\n- AWS SageMaker (for AI model training and inference)\n- AWS EMR (for AI model training and inference)\n- AWS Lambda\n\nMention the users as 'Business user', 'System Developer' and other users if relevant e.g. 'Data Scientist', 'Analyst', 'Compliance Officer', 'Site Reliability Engineer'\n\nWrite detailed technical user stories in a JSON array with title, user, description and dependencies for each story.";
+        const openaiUser1 = "Business Requirements:\nA self-service marketing rule-engine for business users to develop targeted marketing rules using AI model recommendations and customer data, including product-propensities, demographics, behavior, service usage, and transaction history. The platform ensures minimal spam and delivers messages via inbound and outbound channels. AI models provide product recommendations, predict propensities, optimize relevance, and align with revenue goals, while determining the best contact method, channels, timing, and content. Data is sourced from T3 for historical customer information and from Confluence Kafka for real-time customer events.";
+        // eslint-disable-next-line quotes
+        const openaiAssistant1 = '[{"title":"Marketing rules for targeted messages","user":"Business user","description":"As a business user, I want to create marketing rules based on AI model recommendations and customer data to deliver targeted messages via inbound and outbound channels. The rules should allow me to filter customers based on product-propensities, demographics, behavior, recent usage of services, and transaction history. The rules should also comply with regulatory requirements and prevent spamming customers. The system should provide a user-friendly interface to create, edit, and delete rules.","dependencies":["List of events to be available in the system.","Examples of complex conditions to be supported in rules. e.g. timeout between start and end events, event sequence.","List of spamming prevention rules."]},{"title":"Arbitration between inbound and outbound channels","user":"Business user","description":"As a business user, I want to create rules to arbitrate across all inbound and outbound channels. Inbound channels should include mobile apps, website and support calls. Outbound channels should include push-notes, email and SMS. The rules should allow me to specify the priority of channels and the conditions under which a channel should be used. The system should integrate with Arbitration-Layer and provide options to setup routing to one or multiple channels of Arbitration-Layer. Rules should be able to use a mix of AI model recommended touch points/channels, product/offer information and customer data to determine the best channel to contact a customer.","dependencies":["List of all inbound and outbound channels to support.","Types and examples of criteria to be supported"]},{"title":"Train AI models and monitor model performance over time","user":"Data Scientist","description":"As a data scientist, I want to train AI models to provide product recommendations, product propensities and content personalization. The system should provide a way to make training data available to Analytical-Cluster or AWS SageMaker to train the models. The system should also provide a way to update the models with new data and retrain them periodically.","dependencies":["Training data in T3-Feature-Mart should include customer demographics, behavior, service usage logs including Adobe/Google Analytics and customer transaction history.","Training data should be accessible in Analytical-Cluster or AWS SageMaker for training the models.","List of Model monitoring metrics. Definition of each metric.","Threshold values for each model monitoring metric, to raise alerts."]},{"title":"Integrate AI models into the rule engine system","user":"System Developer","description":"As a system developer, I want to integrate AI models into the rule engine system to predict product-propensity, maximizing relevance of products to customers and bank\'s revenue expectations. The AI models should predict the best way to contact a customer, determining the optimal channels, timing, and content. The system should provide REST APIs to access the real-time AI models in rule engine. The system should also provide batch scoring option on Job-Server or AWS EMR, where scores across all customers need to be calculated at the same time.","dependencies":["List of AI models. Inputs and outputs of each AI model","List of APIs. Inputs and outputs of each API","List of batch scoring jobs. Inputs and outputs of each job"]},{"title":"Measure campaign effectiveness using control groups","user":"Business user","description":"As a business user, I want to measure the effectiveness of campaigns using control groups. The system should provide a way to create control groups, assign them to campaigns and compare the results with the treatment groups. The system should generate reports with metrics such as conversion rate, revenue generated, and customer satisfaction.","dependencies":["List of metrics to be used for measuring campaign effectiveness.","Treatment group evaluation criteria for stratified sampling.","Types and examples of campaigns to be supported."]},{"title":"Handle high volumes and build fault-tolerant and resilient system","user":"System Developer","description":"As a system developer, I want to handle high volume and velocity of events and actions without compromising performance or reliability. The event handling should use scalable platforms like AWS Lambda and AWS SQS to process events asynchronously and scale up or down based on the load. The system should also use caching and load balancing for APIs to improve performance and reduce latency.","dependencies":["Maximum expected volume of events and actions.","Expected expect historical data to be loaded."]},{"title":"Secure and compliant system","user":"Compliance Officer","description":"As a compliance officer, I want to ensure that the system is secure and compliant with the bank\'s policies and regulations. The system should use CyberArk or AWS KMS to store keys to encrypt data at rest and in transit. The system should also use an APM like Splunk or AWS CloudTrail to monitor and audit system activity. The system should be regularly tested for vulnerabilities and compliance with the bank\'s policies and regulations.","dependencies":["List of compliance tests to be performed."]},{"title":"System monitoring dashboard","user":"Site Reliability Engineer","description":"As a site reliability engineer, I want to ensure that the system health is monitored and displayed on a live dashboard. There should be configurable thresholds for system metrics, to raise alarms and send notifications relevant SRE and development teams.""dependencies":["List of system metrics to be monitored.","List of alarms to be raised.","List of notifications to be sent."]}]';
+        const openaiUser2 = "Business Requirements:\n" + epic.requirement;
         return openai.createChatCompletion({
           model: "gpt-3.5-turbo",
+          max_tokens: 2048,
           messages: [
             {role: "system", content: openaiSystem},
             {role: "user", content: openaiUser1},
             {role: "assistant", content: openaiAssistant1},
             {role: "user", content: openaiUser2},
-            {role: "assistant", content: openaiAssistant2},
-            {role: "user", content: openaiUser3}],
+          ],
         }).then((response) => {
           const responseText = response.data.choices[0].message.content.trim();
           console.log("Response text: ", responseText);
-          // split response by newline and into stories
-          const stories = responseText.split("\n").map((story) => {
-            return story.trim();
-          }).filter((story) => {
-            return story.length > 0;// && !story.contains("tories");
-          });
-          // update the epic document with the response
           epicSnap.ref.update({
             response: responseText,
-            stories: stories,
+            // stories: stories,
             testScenarios: "",
             processScenarios: false,
             cahed: false,
+          });
+          // parse the JSON response
+          const stories = JSON.parse(responseText);
+          console.log("stories length: " + stories.length);
+          // add the stories to the child collection stories
+
+          stories.forEach((story) => {
+            story.created = admin.firestore.FieldValue.serverTimestamp();
+            console.log("Adding story");
+            epicSnap.ref.collection("stories").add(story);
           });
           return Promise.resolve();
         });
@@ -443,49 +445,85 @@ exports.onCreateEpic = functions.runWith({secrets: [openAiApiKey], timeoutSecond
       console.log("match.response: " + match.response);
       return epicSnap.ref.update({
         response: match.response,
-        stories: match.stories,
         testScenarios: match.testScenarios,
         processScenarios: false,
         cached: true,
-      });
-    }
+      }).then(() => {
+        // create child collection of stories by copying the stories from the match epic
+        const storiesRef = epicSnap.ref.collection("stories");
+        return storiesRef.get().then((storiesSnap) => {
+          if (storiesSnap.empty) {
+            console.log("No stories found in the new epic, copying stories from cached epic");
+            const matchStoriesRef = matchSnap.docs[0].ref.collection("stories");
+            return matchStoriesRef.get().then((matchStoriesSnap) => {
+              matchStoriesSnap.docs.forEach((doc) => {
+                const story = doc.data();
+                story.created = admin.firestore.FieldValue.serverTimestamp();
+                console.log("Adding cached story");
+                epicSnap.ref.collection("stories").add(story);
+              });
+              return Promise.resolve();
+            });
+          } else {
+            console.log("Stories already exist in the cache");
+            return Promise.resolve();
+          }
+        }); // end of storiesRef.get()
+      }); // end of epicSnap.ref.update()
+    } // end of if (matchSnap.empty)
   }).catch(console.error);
 });
 
 // onUpdate function for the "epics" collection to generate test scenarios
 exports.onUpdateEpic = functions.runWith({secrets: [openAiApiKey]}).firestore.document("epics/{epicId}").onUpdate((change, context) => {
   const epic = change.after.data();
-  if (epic.stories && epic.stories.length > 0 && epic.processScenarios) {
-    console.log("Creating test scenarios for epic");
-    const openaiSystem = "You are a software product QA team member, writing test scenarios for a given epic and user stories.";
-    const openaiUser1 = "Write test scenarios\n\nRequirement:\n" + epic.requirement + "\n\nUser Stories:\n" + epic.stories.join("\n");
-    // call the OpenAI ChatCompletion API
-    const configuration = new Configuration({
-      apiKey: openAiApiKey.value(),
-    });
-    const openai = new OpenAIApi(configuration);
-    return openai.createChatCompletion({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {role: "system", content: openaiSystem},
-        {role: "user", content: openaiUser1}],
-    }).then((response) => {
-      const responseText = response.data.choices[0].message.content.trim();
-      console.log("Response text: ", responseText);
-      // update the epic document with the response
+  // query child collection stories with epic reference
+  const storiesRef = change.after.ref.collection("stories");
+  return storiesRef.get().then((storiesSnap) => {
+    const stories = storiesSnap.docs.map((doc) => doc.data().story);
+    if (stories && stories.length > 0 && epic.processScenarios) {
+      console.log(stories.length + " stories Found. Creating test scenarios for epic");
+      // join all description elements inside the items in stories array, using new line as separator
+      const descriptions = stories.filter((story) => story && story.description).map((story) => story.description).join("\n");
+      console.log("Story descriptions: " + descriptions);
+      const openaiSystem = "You are a software product QA team member, writing test scenarios for a given epic and user stories.";
+      const openaiUser1 = "Write test scenarios\n\nRequirement:\n" + epic.requirement + "\n\nUser Stories:\n" + descriptions;
+      // call the OpenAI ChatCompletion API
+      const configuration = new Configuration({
+        apiKey: openAiApiKey.value(),
+      });
+      const openai = new OpenAIApi(configuration);
+      return openai.createChatCompletion({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {role: "system", content: openaiSystem},
+          {role: "user", content: openaiUser1}],
+      }).then((response) => {
+        const responseText = response.data.choices[0].message.content.trim();
+        console.log("Response text: ", responseText);
+        // update the epic document with the response
+        return change.after.ref.update({
+          testScenarios: responseText,
+          processScenarios: false,
+        });
+      }).catch((error) => {
+        console.error(error);
+        return change.after.ref.update({
+          processScenarios: false,
+        });
+      });
+    } else {
+      console.log("No stories to process in the epic document");
       return change.after.ref.update({
-        testScenarios: responseText,
         processScenarios: false,
       });
-    }).catch((error) => {
-      console.error(error);
-      return change.after.ref.update({
-        processScenarios: false,
-      });
+    }
+  }).catch((error) => {
+    console.error(error);
+    return change.after.ref.update({
+      processScenarios: false,
     });
-  } else {
-    return Promise.resolve();
-  }
+  });
 });
 
 /**
